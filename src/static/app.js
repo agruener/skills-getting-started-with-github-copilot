@@ -4,6 +4,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Function to unregister a participant
+  async function unregisterParticipant(activityName, email) {
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Refresh activities list
+        fetchActivities();
+        messageDiv.textContent = result.message;
+        messageDiv.className = "success";
+      } else {
+        messageDiv.textContent = result.detail || "An error occurred";
+        messageDiv.className = "error";
+      }
+
+      messageDiv.classList.remove("hidden");
+
+      // Hide message after 5 seconds
+      setTimeout(() => {
+        messageDiv.classList.add("hidden");
+      }, 5000);
+    } catch (error) {
+      messageDiv.textContent = "Failed to unregister. Please try again.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      console.error("Error unregistering:", error);
+    }
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -23,7 +59,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Build participants list
         const participantsList = details.participants.length > 0
           ? `<ul class="participants-list">
-              ${details.participants.map(email => `<li>${email}</li>`).join('')}
+              ${details.participants.map(email => `
+                <li>
+                  <span class="participant-email">${email}</span>
+                  <button class="delete-btn" data-activity="${name}" data-email="${email}" title="Remove participant">🗑️</button>
+                </li>
+              `).join('')}
              </ul>`
           : '<p class="no-participants">No participants yet</p>';
 
@@ -39,6 +80,17 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         activitiesList.appendChild(activityCard);
+
+        // Add click handlers for delete buttons
+        activityCard.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const activity = e.target.dataset.activity;
+            const email = e.target.dataset.email;
+            if (confirm(`Remove ${email} from ${activity}?`)) {
+              unregisterParticipant(activity, email);
+            }
+          });
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
